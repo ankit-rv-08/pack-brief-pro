@@ -17,12 +17,12 @@ export const Route = createFileRoute("/")({
 });
 
 type Cite = { id: string; file: string; type: "xlsx" | "pdf"; loc: string; line: string; snippet: string };
-const cites: Cite[] = [
+const cites = [
   { id: "c1", file: "production_specs.xlsx", type: "xlsx", loc: "p.2", line: "Row 3", snippet: "ECO-01 bar soap, 100g. Carton target: 100% recyclable, max unit cost $0.18, launch Q2 retail." },
   { id: "c2", file: "brand_guidelines.pdf", type: "pdf", loc: "p.14", line: "Page 14", snippet: "Packaging must express a natural, low-impact identity. Prefer uncoated, earthy substrates." },
   { id: "c3", file: "production_specs.xlsx", type: "xlsx", loc: "p.2", line: "Row 7", snippet: "Board: 350gsm recycled kraft, water-based inks, no laminate. FSC certification required." },
   { id: "c4", file: "retailer_req.pdf", type: "pdf", loc: "p.3", line: "Page 3", snippet: "Shelf-ready packaging should use bleached white board for consistent color reproduction." },
-];
+] as const satisfies readonly Cite[];
 
 function FileIcon({ type, className = "h-3.5 w-3.5" }: { type: "xlsx" | "pdf"; className?: string }) {
   return type === "xlsx" ? <FileSpreadsheet className={`${className} text-success`} /> : <FileText className={`${className} text-danger`} />;
