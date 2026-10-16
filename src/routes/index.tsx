@@ -97,7 +97,7 @@ function Index() {
         <main className="min-w-0 flex-1 overflow-y-auto bg-card">
           <div className="mx-auto max-w-3xl px-10 py-10">
             <div className="fade-up text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Working Draft · v0.3</div>
-            <h1 className="fade-up mt-2 font-display text-4xl leading-tight">Draft Brief: ECO-01 Soap Packaging Redesign</h1>
+            <h1 className="fade-up mt-2 font-display text-[32px] font-normal leading-tight tracking-[-0.02em]">Draft Brief: ECO-01 Soap Packaging Redesign</h1>
             <div className="mt-6 h-px bg-border" />
             {[
               { n: 1, t: "Project Overview", v: 94, body: "Redesign the primary carton for ECO-01, a 100g bar soap, ahead of a Q2 retail launch. The packaging must be fully recyclable, communicate a natural low-impact identity, and hold a unit cost under $0.18.", c: [cites[0], cites[1]] },
