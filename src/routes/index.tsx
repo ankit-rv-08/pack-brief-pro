@@ -5,6 +5,8 @@ import {
   Loader2, Check, RotateCw, Volume2, VolumeX, AlertCircle, Upload,
 } from "lucide-react";
 import { Jessy, type JessyMsg } from "@/components/brief/Jessy";
+import { Button } from "@/components/ui/button";
+import { AnimatedCount, BriefCommands, CopySource, DraftSkeleton } from "@/components/brief/Polish";
 import { ding, tick } from "@/lib/sound";
 
 export const Route = createFileRoute("/")({
@@ -45,8 +47,8 @@ type Toast = { id: number; kind: "ok" | "err"; text: string };
 function FileIcon({ type, className = "h-3.5 w-3.5" }: { type: FType; className?: string }) {
   return type === "xlsx" ? <FileSpreadsheet className={`${className} text-success`} /> : <FileText className={`${className} text-danger`} />;
 }
-function Badge({ n, amber }: { n: number; amber?: boolean }) {
-  return <span key={n} className={`badge-bounce rounded-full px-1.5 py-px text-[10px] font-semibold ${amber ? "bg-warning-soft text-warning" : "bg-muted text-muted-foreground"}`}>{n}</span>;
+function Badge({ n }: { n: number; amber?: boolean }) {
+  return <span key={n} className="badge-bounce ml-auto flex h-[18px] min-w-[20px] items-center justify-center rounded border border-border px-1 font-mono text-[10.5px] text-muted-foreground">{n}</span>;
 }
 
 function Clock() {
@@ -59,7 +61,7 @@ function Clock() {
   }, []);
   return (
     <div className="flex items-center gap-1.5 font-mono text-[11px] tracking-[0.02em] text-muted-foreground">
-      <span key={now} className="heartbeat h-1.5 w-1.5 rounded-full bg-primary" />
+      <span key={now} className="heartbeat h-[5px] w-[5px] rounded-full bg-primary" />
       {now ?? "--:--:--"}
     </div>
   );
@@ -101,6 +103,13 @@ function Confetti() {
 let msgId = 1;
 
 function Index() {
+  const [commandsOpen, setCommandsOpen] = useState(false);
+  const [jessyOpen, setJessyOpen] = useState(false);
+  useEffect(() => {
+    const handle = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setCommandsOpen((v) => !v); } };
+    window.addEventListener("keydown", handle);
+    return () => window.removeEventListener("keydown", handle);
+  }, []);
   const [sel, setSel] = useState<Cite | null>(null);
   const [files, setFiles] = useState<SrcFile[]>([]);
   const [phase, setPhase] = useState<"idle" | "running" | "done">("idle");
@@ -185,10 +194,12 @@ function Index() {
     }, 1100);
   };
 
+  const copied = (file: string) => toast(file ? "ok" : "err", file ? "Source path copied" : "Clipboard unavailable");
+
   const Chip = ({ c }: { c: Cite }) => (
-    <button onClick={() => setSel(c)} className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] transition hover:shadow-sm ${sel?.id === c.id ? "border-primary bg-primary/5 text-foreground" : "border-border bg-card text-muted-foreground"}`}>
-      <FileIcon type={c.type} /> {c.file}, {c.loc}
-    </button>
+    <span className="source-reference inline-flex max-w-full items-center rounded-md border border-border bg-card"><Button variant="plain" size="plain" onClick={() => setSel(c)} className={`citation-chip inline-flex min-w-0 items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] transition hover:shadow-sm ${sel?.id === c.id ? "border-primary bg-primary/5 text-foreground" : "border-border bg-card text-muted-foreground"}`}>
+      <FileIcon type={c.type} /> <span className="truncate">{c.file}, {c.loc}</span>
+    </Button><CopySource file={c.file} onCopy={copied} /></span>
   );
   const Pill = ({ v }: { v: number }) => {
     const hi = v >= 90;
@@ -196,10 +207,11 @@ function Index() {
   };
 
   const GenButton = ({ className = "" }: { className?: string }) => (
-    <button onClick={generate} disabled={!files.length || btn === "running"}
-      className={`inline-flex items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed ${!files.length ? "opacity-40" : ""} ${className}`}>
+    <Button variant="plain" size="plain" onClick={generate} disabled={!files.length || btn === "running"}
+      onPointerMove={(e) => { const r = e.currentTarget.getBoundingClientRect(); e.currentTarget.style.setProperty("--cursor-x", `${e.clientX - r.left}px`); e.currentTarget.style.setProperty("--cursor-y", `${e.clientY - r.top}px`); }}
+      className={`generate-button inline-flex items-center justify-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed ${!files.length ? "opacity-40" : ""} ${className}`}>
       {btn === "running" ? <><Loader2 className="h-4 w-4 animate-spin" />Working…</> : btn === "ready" ? <><Check className="h-4 w-4" />Brief ready</> : <><Sparkles className="h-4 w-4" />Generate brief</>}
-    </button>
+    </Button>
   );
 
   const done = phase === "done";
@@ -207,33 +219,33 @@ function Index() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background font-sans text-foreground">
       <input ref={fileInput} type="file" multiple hidden onChange={(e) => { onPick(e.target.files); e.target.value = ""; }} />
-      <header className="flex h-[52px] shrink-0 items-center justify-between border-b border-border px-5">
+      <header className="workspace-header relative z-10 flex h-14 shrink-0 items-center justify-between px-6">
         <div className="flex items-center gap-2">
-          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-foreground"><Sparkles className="h-3.5 w-3.5 text-background" /></div>
+          <div className="brand-mark flex h-7 w-7 items-center justify-center rounded-lg bg-foreground"><Sparkles className="h-3.5 w-3.5 text-background" /></div>
           <span className="text-sm font-bold">Brief AI</span>
         </div>
-        <Clock />
+        <div className="flex items-center gap-4"><Clock />
         <div className="flex gap-2">
-          <button onClick={() => fileInput.current?.click()} className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"><Plus className="h-4 w-4" />Add files</button>
+          <Button variant="plain" size="plain" onClick={() => fileInput.current?.click()} className="header-ghost inline-flex h-8 items-center gap-2 rounded-md border border-border px-3 text-[12px] text-muted-foreground hover:bg-muted"><Plus className="h-4 w-4" />Add files</Button>
           <GenButton />
-        </div>
+        </div></div>
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <aside className="flex w-[300px] shrink-0 flex-col border-r border-border bg-sidebar">
+        <aside className="flex sources-sidebar w-[300px] shrink-0 flex-col border-r border-border bg-sidebar">
           <div className="nice-scroll flex-1 space-y-6 overflow-y-auto p-4">
             <section className="fade-up">
               <h3 className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Sources <Badge n={files.length} /></h3>
               {files.length === 0 ? (
-                <button onClick={() => fileInput.current?.click()} className="w-full rounded-lg border border-dashed border-border p-4 text-center text-[12px] text-muted-foreground hover:bg-card">
+                <Button variant="plain" size="plain" onClick={() => fileInput.current?.click()} className="w-full rounded-lg border border-dashed border-border p-4 text-center text-[12px] text-muted-foreground hover:bg-card">
                   <Upload className="mx-auto mb-1 h-4 w-4" />Add spreadsheets or PDFs
-                </button>
+                </Button>
               ) : (
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   {files.map((f) => (
-                    <div key={f.name} className="slide-in flex items-center gap-2.5 rounded-lg border border-border bg-card p-2.5 transition hover:shadow-sm">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted"><FileIcon type={f.type} className="h-4 w-4" /></div>
-                      <div className="min-w-0"><div className="truncate text-[13px] font-medium">{f.name}</div><div className="text-[11px] text-muted-foreground">{f.meta}</div></div>
+                    <div key={f.name} className="source-reference source-card slide-in flex items-center gap-2 rounded-lg border border-border bg-card p-2 transition hover:shadow-sm">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted"><FileIcon type={f.type} className="h-4 w-4" /></div>
+                      <div className="min-w-0 flex-1"><div className="truncate text-[12.5px] font-medium" title={f.name}>{f.name}</div><div className="font-mono text-[10.5px] text-muted-foreground">{f.meta}</div></div><CopySource file={f.name} onCopy={copied} />
                     </div>
                   ))}
                   {!done && <GenButton className={`mt-2 w-full ${glow ? "glow-pulse" : ""}`} />}
@@ -244,10 +256,10 @@ function Index() {
               <>
                 <section className="fade-up" style={{ animationDelay: "80ms" }}>
                   <h3 className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Gaps <Badge n={2} amber /></h3>
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     {[["Target retail price", "No source specifies the shelf price point."], ["Print run quantity", "Initial order volume is not defined."]].map(([t, d]) => (
-                      <div key={t} className="rounded-lg border border-warning/25 bg-warning-soft p-2.5">
-                        <div className="flex items-center gap-1.5 text-[13px] font-medium"><AlertTriangle className="h-3.5 w-3.5 text-warning" />{t}</div>
+                      <div key={t} className="gap-card rounded-lg border border-border border-l-2 border-l-warning bg-warning-soft p-3">
+                        <div className="mb-1 text-[10.5px] uppercase text-warning">Missing detail</div><div className="text-[12.5px] font-semibold">{t}</div>
                         <p className="mt-0.5 text-[12px] text-muted-foreground">{d}</p>
                       </div>
                     ))}
@@ -256,11 +268,11 @@ function Index() {
                 <section className="fade-up" style={{ animationDelay: "160ms" }}>
                   <h3 className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Conflicts <Badge n={1} /></h3>
                   <div className="rounded-lg border border-border bg-card p-3">
-                    <div className="mb-2 text-[12px] font-medium">Board substrate</div>
+                    <div className="mb-2 flex items-center gap-2 text-[10.5px] uppercase text-muted-foreground"><span className="h-[5px] w-[5px] rounded-full bg-danger" />Board substrate</div>
                     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-center">
-                      <button onClick={() => setSel(cites[2])} className="rounded-md bg-muted p-2 text-[12px] hover:shadow-sm"><div className="font-medium">Recycled Kraft</div><div className="text-[10px] text-muted-foreground">production_specs</div></button>
-                      <span className="text-[10px] font-bold text-primary">VS</span>
-                      <button onClick={() => setSel(cites[3])} className="rounded-md bg-muted p-2 text-[12px] hover:shadow-sm"><div className="font-medium">Bleached White</div><div className="text-[10px] text-muted-foreground">retailer_req</div></button>
+                      <Button variant="plain" size="plain" onClick={() => setSel(cites[2])} className="rounded-md bg-muted p-2 text-[12px] hover:shadow-sm"><div className="font-medium">Recycled Kraft</div><div className="text-[10px] text-muted-foreground">production_specs</div></Button>
+                      <span className="text-[10px] font-medium text-muted-foreground">VS</span>
+                      <Button variant="plain" size="plain" onClick={() => setSel(cites[3])} className="rounded-md bg-muted p-2 text-[12px] hover:shadow-sm"><div className="font-medium">Bleached White</div><div className="text-[10px] text-muted-foreground">retailer_req</div></Button>
                     </div>
                   </div>
                 </section>
@@ -269,55 +281,57 @@ function Index() {
           </div>
           <div className="flex items-center gap-2 border-t border-border p-3">
             {done && (
-              <button onClick={reset} className="group inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[12px] text-muted-foreground hover:bg-muted">
+              <Button variant="plain" size="plain" onClick={reset} className="group inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[12px] text-muted-foreground hover:bg-muted">
                 <RotateCw className="h-3.5 w-3.5 transition-transform duration-1000 group-hover:rotate-360" />Start another brief
-              </button>
+              </Button>
             )}
-            <button onClick={() => setSound((s) => !s)} aria-label={sound ? "Turn sound off" : "Turn sound on"} title={sound ? "Sound on" : "Sound off"}
+            <Button variant="plain" size="plain" onClick={() => setSound((s) => !s)} aria-label={sound ? "Turn sound off" : "Turn sound on"} title={sound ? "Sound on" : "Sound off"}
               className="ml-auto flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted">
               {sound ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-            </button>
+            </Button>
           </div>
         </aside>
 
         <main className="relative min-w-0 flex-1 bg-card">
           {confetti && <Confetti />}
           {!done ? (
-            <div className="mesh relative flex h-full flex-col items-center justify-center px-10 text-center">
+            <div className={`empty-workspace relative flex h-full flex-col items-center justify-center gap-8 px-8 text-center ${phase === "running" ? "is-running" : ""}`}>
               <div className="relative">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{phase === "running" ? "Drafting" : "New brief"}</div>
-                <h1 className="mt-3 font-display text-[32px] font-normal leading-tight tracking-[-0.02em]">A clearer brief starts with better evidence.</h1>
-                <p className="mx-auto mt-3 max-w-md text-[14px] text-muted-foreground">Add your specs, brand guidelines and retailer requirements. Every line of the brief will point back to its source.</p>
+                <div className="text-[10.5px] font-semibold uppercase text-primary">{phase === "running" ? "Drafting" : "New brief"}</div>
+                <h1 className="mt-3 empty-title font-display text-[38px] font-normal leading-[1.1]">A clearer brief starts with better evidence.</h1>
+                <p className="mx-auto mt-4 max-w-[480px] text-[14px] leading-[1.65] text-secondary-foreground">Add your specs, brand guidelines and retailer requirements. Every line of the brief will point back to its source.</p>
                 <div className="mt-8"><Pipeline stage={stage} running={phase === "running"} /></div>
                 {phase === "idle" && (
-                  <div className="mt-8 flex justify-center gap-2">
-                    <button onClick={() => fileInput.current?.click()} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-sm hover:bg-muted"><Plus className="h-4 w-4" />Add files</button>
-                    {files.length === 0 && <button onClick={() => addFiles(SAMPLE)} className="rounded-md px-3 py-1.5 text-sm text-primary hover:bg-primary/5">Use sample sources</button>}
+                  <div className="mt-8 flex justify-center gap-3">
+                    <Button variant="plain" size="plain" onClick={() => fileInput.current?.click()} className="inline-flex h-8 items-center gap-2 rounded-md bg-primary px-4 text-[12px] text-primary-foreground hover:bg-primary/90"><Plus className="h-4 w-4" />Add files</Button>
+                    {files.length === 0 && <Button variant="plain" size="plain" onClick={() => addFiles(SAMPLE)} className="rounded-md px-3 py-1.5 text-sm text-primary hover:bg-primary/5">Use sample sources</Button>}
                   </div>
                 )}
               </div>
+              {phase === "running" && <DraftSkeleton />}
             </div>
           ) : (
             <div className="nice-scroll edge-fade h-full overflow-y-auto">
               <div className="mx-auto max-w-3xl px-10 py-10">
-                <div className="fade-up text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Working Draft · v0.3</div>
-                <h1 className="fade-up mt-2 font-display text-[32px] font-normal leading-tight tracking-[-0.02em]">Draft Brief: ECO-01 Soap Packaging Redesign</h1>
-                <div className="mt-6 h-px bg-border" />
+                <div className="fade-up text-[10.5px] font-semibold uppercase text-primary">Working Draft · v0.3</div>
+                <h1 className="fade-up mt-2 brief-title font-display text-[36px] font-normal leading-[1.15]">Draft Brief: ECO-01 Soap Packaging Redesign</h1>
+                <div className="mt-4 h-0.5 w-8 bg-primary" />
+                <div className="mt-4 flex gap-4 font-mono text-[10.5px] text-muted-foreground"><span><AnimatedCount value={5} /> sections</span><span><AnimatedCount value={21} /> facts</span></div>
                 {[
                   { n: 1, t: "Project Overview", v: 94, body: "Redesign the primary carton for ECO-01, a 100g bar soap, ahead of a Q2 retail launch. The packaging must be fully recyclable, communicate a natural low-impact identity, and hold a unit cost under $0.18.", c: [cites[0], cites[1]] },
                   { n: 2, t: "Material Specs", v: 82, body: "Specify 350gsm recycled kraft board with water-based inks and no laminate; FSC certification is required. Note that retailer guidance favors bleached white board for color consistency — this conflict must be resolved.", c: [cites[2], cites[3]] },
                 ].map((s, i) => (
-                  <section key={s.n} className="fade-up mt-6 rounded-xl border border-border bg-card p-6 transition hover:shadow-md" style={{ animationDelay: `${60 + i * 60}ms` }}>
+                  <section key={s.n} className="fade-up brief-section mt-7 rounded-xl border border-border bg-card p-5" style={{ animationDelay: `${60 + i * 60}ms` }}>
                     <div className="flex items-start justify-between gap-4">
-                      <h2 className="text-lg font-semibold"><span className="mr-2 text-muted-foreground">{s.n}.</span>{s.t}</h2>
+                      <h2 className="text-[15px] font-semibold leading-[1.15]"><span className="mr-2 font-mono text-[13px] text-primary">{s.n}.</span>{s.t}</h2>
                       <Pill v={s.v} />
                     </div>
-                    <p className="mt-3 text-[14.5px] leading-relaxed text-foreground/85">{s.body}</p>
+                    <p className="mt-3 text-[14px] leading-[1.65] text-secondary-foreground">{s.body}</p>
                     <div className="mt-4 flex flex-wrap gap-2">{s.c.map((c) => <Chip key={c.id} c={c} />)}</div>
                   </section>
                 ))}
                 <div className="fade-up mt-6 grid gap-4 md:grid-cols-2" style={{ animationDelay: "180ms" }}>
-                  <div className="rounded-xl border border-warning/25 bg-warning-soft p-5">
+                  <div className="rounded-xl border border-border bg-muted p-5">
                     <h3 className="text-sm font-semibold">Uncertainty</h3>
                     <ul className="mt-2 list-disc space-y-1 pl-4 text-[13px] text-foreground/80">
                       <li>Substrate choice is contested between sources.</li>
@@ -335,14 +349,14 @@ function Index() {
                   </div>
                 </div>
                 <div className="fade-up mt-8 flex gap-2 pb-6" style={{ animationDelay: "240ms" }}>
-                  {["Export PDF", "Export DOCX"].map((l) => <button key={l} className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"><Download className="h-4 w-4" />{l}</button>)}
+                  {["Export PDF", "Export DOCX"].map((l) => <Button variant="plain" size="plain" key={l} className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"><Download className="h-4 w-4" />{l}</Button>)}
                 </div>
               </div>
             </div>
           )}
         </main>
 
-        <aside className={`nice-scroll w-[340px] shrink-0 overflow-y-auto border-l border-border bg-sidebar p-5 ${done ? "panel-in" : ""}`} key={done ? "d" : "e"}>
+        <aside className={`nice-scroll evidence-sidebar w-[340px] shrink-0 overflow-y-auto border-l border-border bg-sidebar p-5 ${done ? "panel-in" : ""}`} key={done ? "d" : "e"}>
           <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Evidence</h3>
           {!sel ? (
             <div className="mt-16 flex flex-col items-center text-center">
@@ -351,11 +365,11 @@ function Index() {
             </div>
           ) : (
             <div key={sel.id} className="fade-up mt-4">
-              <div className="flex items-center gap-2 text-[13px] font-medium"><FileIcon type={sel.type} className="h-4 w-4" />{sel.file}</div>
+              <div className="source-reference flex items-center gap-2 text-[12.5px] font-medium"><FileIcon type={sel.type} className="h-4 w-4" /><span className="min-w-0 flex-1 truncate" title={sel.file}>{sel.file}</span><CopySource file={sel.file} onCopy={copied} /></div>
               <div className="mt-3 rounded-lg border border-border bg-muted p-4 text-[13.5px] leading-relaxed">
                 <mark className="rounded bg-primary/15 px-0.5 text-foreground">{sel.snippet}</mark>
               </div>
-              <div className="mt-3 font-mono text-[11px] text-muted-foreground">Source file: {sel.file} · {sel.line}</div>
+              <div className="source-reference mt-4 flex items-center gap-1 font-mono text-[10.5px] text-muted-foreground"><span className="min-w-0 break-words">Source file: {sel.file} · {sel.line}</span><CopySource file={sel.file} onCopy={copied} /></div>
               <a href="#" className="mt-3 inline-flex items-center gap-1 text-[13px] font-medium text-primary hover:underline">Open full source <ArrowUpRight className="h-3.5 w-3.5" /></a>
             </div>
           )}
@@ -371,7 +385,8 @@ function Index() {
         </div>
       )}
 
-      <Jessy messages={msgs} thinking={thinking} thinkingText={thinkingText} activity={activity}
+      <BriefCommands open={commandsOpen} onOpenChange={setCommandsOpen} onAdd={() => fileInput.current?.click()} onGenerate={generate} onReset={reset} onSound={() => setSound((v) => !v)} onJessy={() => setJessyOpen(true)} canGenerate={files.length > 0 && phase !== "running"} canReset={done} />
+      <Jessy open={jessyOpen} onOpenChange={setJessyOpen} messages={msgs} thinking={thinking} thinkingText={thinkingText} activity={activity}
         active={phase === "running" || thinking} sparkle={sparkle} onSend={onSend} />
     </div>
   );
