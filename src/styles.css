@@ -87,6 +87,7 @@
   --danger: oklch(0.58 0.2 27);
   --danger-soft: oklch(0.95 0.03 35);
   --radius: 0.5rem;
+  --mobile-nav-height: calc(56px + env(safe-area-inset-bottom, 0px));
   --background: oklch(0.968 0.005 80);
   --foreground: oklch(0.21 0.008 80);
   --card: oklch(1 0 0);
@@ -208,7 +209,6 @@ h1, h2, h3 { line-height: 1.15; }
 .empty-title { max-width: 560px; margin-inline: auto; }
 .empty-workspace { background: var(--background); }
 .empty-workspace.is-running { justify-content: flex-start; overflow-y: auto; padding-top: 40px; }
-.empty-workspace.is-running .empty-title { font-size: 32px; }
 .source-card:hover { border-color: color-mix(in oklab, var(--border) 80%, var(--foreground)); box-shadow: var(--shadow-hover); }
 .sources-sidebar section .grid > button { display: flex; flex-direction: column; align-items: stretch; min-width: 0; white-space: normal; font-size: 11.5px; }
 .sources-sidebar section .grid > button > div:last-child { order: -1; overflow-wrap: anywhere; font-family: var(--font-mono); font-size: 9px; }
@@ -223,8 +223,18 @@ h1, h2, h3 { line-height: 1.15; }
 .command-palette { background: var(--floating-background); backdrop-filter: blur(24px) saturate(1.4); border-color: var(--floating-border); box-shadow: var(--shadow-floating); }
 @keyframes shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
 .skeleton-card::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--primary) 6%, transparent), transparent); animation: shimmer 1.5s infinite; }
-@media (max-width: 1200px) { .sources-sidebar { width: 248px; } .evidence-sidebar { width: 264px; padding: 16px; } .brief-section > div:first-child { flex-wrap: wrap; gap: 8px; } main .nice-scroll > div { padding-inline: 24px; } }
-@media (max-width: 900px) { .sources-sidebar { width: 216px; } .evidence-sidebar { width: 220px; } .empty-workspace { padding-inline: 24px; } .empty-title { font-size: 32px; } .empty-workspace .font-mono { flex-wrap: wrap; justify-content: center; } .empty-workspace .font-mono + span { width: 24px; } }
-@media (max-width: 700px) { .sources-sidebar { width: 172px; } .evidence-sidebar { position: absolute; right: 0; top: 56px; bottom: 0; width: min(300px, 90vw); z-index: 20; box-shadow: var(--shadow-floating); } .evidence-sidebar:not(:has(mark)) { display: none; } .workspace-header { padding-inline: 12px; gap: 8px; } .workspace-header > div:last-child { gap: 8px; } .workspace-header .font-mono { display: none; } .empty-title { font-size: 28px; overflow-wrap: anywhere; } .empty-workspace { padding-inline: 16px; } main .nice-scroll > div { padding-inline: 16px; } .brief-title { font-size: 28px; } .copy-source { opacity: 1; } .jessy-panel { right: 8px !important; left: auto !important; bottom: 8px !important; top: auto !important; } }
+.brief-section > div:first-child { flex-wrap: wrap; gap: 8px; }
+.mobile-tab-bar { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.compact-generate.generate-button { width: 32px; padding-inline: 0; }
+@media (min-width: 768px) and (max-width: 1024px) { .evidence-sidebar { box-shadow: var(--shadow-floating); } }
+@media (max-width: 767px) {
+  .empty-workspace .font-mono { flex-wrap: wrap; justify-content: center; }
+  .empty-workspace .font-mono + span { width: 16px; }
+  .empty-workspace > div:first-child > div:has(.font-mono) > div { flex-wrap: wrap; row-gap: 12px; }
+  .empty-workspace { justify-content: safe center; }
+  .copy-source { opacity: 1; }
+  .jessy-trigger { bottom: calc(var(--mobile-nav-height) + 16px); right: 16px; }
+  .jessy-panel { right: 8px !important; left: auto !important; bottom: calc(var(--mobile-nav-height) + 8px) !important; top: auto !important; height: min(520px, calc(100dvh - var(--mobile-nav-height) - 72px)); }
+  .workspace-toast { bottom: calc(var(--mobile-nav-height) + 16px); width: max-content; max-width: calc(100vw - 24px); }
+}
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } .confetti-dot { display: none; } }
-@media (max-width: 700px) { .sources-sidebar { display: none; } .empty-workspace { padding-inline: 24px; } .empty-workspace > div:first-child > div:has(.font-mono) > div { flex-wrap: wrap; row-gap: 12px; } .empty-title { overflow-wrap: normal; } }
