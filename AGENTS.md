@@ -11,3 +11,4 @@
 
 - Keep brief presentation helpers in `src/components/brief` and use the shared Button variants for controls, so refinements remain consistent without altering demo generation logic.
 - Command-K belongs to the workspace command palette; Jessy opens through its trigger or a palette action to avoid competing keyboard listeners.
+- Workspace panels use responsive visibility utilities with shared breakpoint classification for evidence navigation, so citations open the appropriate mobile tab or tablet slide-over.

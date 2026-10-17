@@ -2,12 +2,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
   Sparkles, FileSpreadsheet, FileText, Plus, Download, Search, ArrowUpRight, AlertTriangle,
-  Loader2, Check, RotateCw, Volume2, VolumeX, AlertCircle, Upload,
+  Loader2, Check, RotateCw, Volume2, VolumeX, AlertCircle, Upload, X, PanelRight,
 } from "lucide-react";
 import { Jessy, type JessyMsg } from "@/components/brief/Jessy";
 import { Button } from "@/components/ui/button";
 import { AnimatedCount, BriefCommands, CopySource, DraftSkeleton } from "@/components/brief/Polish";
 import { ding, tick } from "@/lib/sound";
+import { workspaceLayout, type WorkspacePanel } from "@/components/brief/responsive";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -103,6 +104,8 @@ function Confetti() {
 let msgId = 1;
 
 function Index() {
+  const [mobilePanel, setMobilePanel] = useState<WorkspacePanel>("brief");
+  const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [commandsOpen, setCommandsOpen] = useState(false);
   const [jessyOpen, setJessyOpen] = useState(false);
   useEffect(() => {
@@ -111,6 +114,12 @@ function Index() {
     return () => window.removeEventListener("keydown", handle);
   }, []);
   const [sel, setSel] = useState<Cite | null>(null);
+  const openEvidence = (citation: Cite) => {
+    setSel(citation);
+    const layout = workspaceLayout(window.innerWidth);
+    if (layout === "mobile") setMobilePanel("evidence");
+    if (layout === "tablet") setEvidenceOpen(true);
+  };
   const [files, setFiles] = useState<SrcFile[]>([]);
   const [phase, setPhase] = useState<"idle" | "running" | "done">("idle");
   const [stage, setStage] = useState(0);
@@ -157,7 +166,7 @@ function Index() {
 
   const generate = () => {
     if (!files.length || phase === "running") return;
-    setPhase("running"); setBtn("running"); setStage(0); setActivity([]); setSel(null);
+    setPhase("running"); setBtn("running"); setStage(0); setActivity([]); setSel(null); setMobilePanel("brief"); setEvidenceOpen(false);
     setThinking(true); setThinkingText(`Cross-referencing ${files.length * 18} elements against 12 fact groups…`);
     STEPS.forEach((s, i) => setTimeout(() => { setStage(i); setActivity((a) => [...a, s]); }, 300 + i * 900));
     setTimeout(() => {
@@ -172,7 +181,7 @@ function Index() {
     }, 300 + STEPS.length * 900);
   };
 
-  const reset = () => { setPhase("idle"); setFiles([]); setSel(null); setStage(0); say("Clean slate. Drop new sources whenever you're ready."); };
+  const reset = () => { setPhase("idle"); setFiles([]); setSel(null); setStage(0); setMobilePanel("brief"); setEvidenceOpen(false); say("Clean slate. Drop new sources whenever you're ready."); };
 
   const onSend = (t: string) => {
     say(t, "user");
@@ -184,7 +193,7 @@ function Index() {
         toast("err", "Groq rate limit — try again in 15 min");
       } else if (phase === "done") {
         say("Section 2 cites production_specs.xlsx, row 3. I've opened it in the evidence panel.");
-        setSel(cites[2]);
+        openEvidence(cites[2]);
       } else if (!files.length) {
         say("Nothing to read yet. Add your sources and I'll map them for you.");
       } else {
@@ -197,7 +206,7 @@ function Index() {
   const copied = (file: string) => toast(file ? "ok" : "err", file ? "Source path copied" : "Clipboard unavailable");
 
   const Chip = ({ c }: { c: Cite }) => (
-    <span className="source-reference inline-flex max-w-full items-center rounded-md border border-border bg-card"><Button variant="plain" size="plain" onClick={() => setSel(c)} className={`citation-chip inline-flex min-w-0 items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] transition hover:shadow-sm ${sel?.id === c.id ? "border-primary bg-primary/5 text-foreground" : "border-border bg-card text-muted-foreground"}`}>
+    <span className="source-reference inline-flex max-w-full items-center rounded-md border border-border bg-card"><Button variant="plain" size="plain" onClick={() => openEvidence(c)} className={`citation-chip inline-flex min-w-0 items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] transition hover:shadow-sm ${sel?.id === c.id ? "border-primary bg-primary/5 text-foreground" : "border-border bg-card text-muted-foreground"}`}>
       <FileIcon type={c.type} /> <span className="truncate">{c.file}, {c.loc}</span>
     </Button><CopySource file={c.file} onCopy={copied} /></span>
   );
@@ -206,33 +215,34 @@ function Index() {
     return <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${hi ? "bg-success-soft text-success" : "bg-warning-soft text-warning"}`}><span className={`h-1.5 w-1.5 rounded-full ${hi ? "bg-success" : "bg-warning"}`} />{v}% Confidence</span>;
   };
 
-  const GenButton = ({ className = "" }: { className?: string }) => (
-    <Button variant="plain" size="plain" onClick={generate} disabled={!files.length || btn === "running"}
+  const GenButton = ({ className = "", compact = false }: { className?: string; compact?: boolean }) => (
+    <Button variant="plain" size="plain" onClick={generate} disabled={!files.length || btn === "running"} aria-label={compact ? "Generate brief" : undefined} title={compact ? "Generate brief" : undefined}
       onPointerMove={(e) => { const r = e.currentTarget.getBoundingClientRect(); e.currentTarget.style.setProperty("--cursor-x", `${e.clientX - r.left}px`); e.currentTarget.style.setProperty("--cursor-y", `${e.clientY - r.top}px`); }}
       className={`generate-button inline-flex items-center justify-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed ${!files.length ? "opacity-40" : ""} ${className}`}>
-      {btn === "running" ? <><Loader2 className="h-4 w-4 animate-spin" />Working…</> : btn === "ready" ? <><Check className="h-4 w-4" />Brief ready</> : <><Sparkles className="h-4 w-4" />Generate brief</>}
+      {btn === "running" ? <><Loader2 className="h-4 w-4 animate-spin" />{!compact && "Working…"}</> : btn === "ready" ? <><Check className="h-4 w-4" />{!compact && "Brief ready"}</> : <><Sparkles className="h-4 w-4" />{!compact && "Generate brief"}</>}
     </Button>
   );
 
   const done = phase === "done";
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background font-sans text-foreground">
+    <div className="flex h-dvh flex-col overflow-hidden bg-background font-sans text-foreground">
       <input ref={fileInput} type="file" multiple hidden onChange={(e) => { onPick(e.target.files); e.target.value = ""; }} />
-      <header className="workspace-header relative z-10 flex h-14 shrink-0 items-center justify-between px-6">
-        <div className="flex items-center gap-2">
-          <div className="brand-mark flex h-7 w-7 items-center justify-center rounded-lg bg-foreground"><Sparkles className="h-3.5 w-3.5 text-background" /></div>
-          <span className="text-sm font-bold">Brief AI</span>
+      <header className="workspace-header relative z-10 grid h-14 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 sm:px-4 md:flex md:justify-between md:px-6">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="brand-mark flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-foreground"><Sparkles className="h-3.5 w-3.5 text-background" /></div>
+          <span className="truncate text-sm font-bold">Brief AI</span>
         </div>
-        <div className="flex items-center gap-4"><Clock />
-        <div className="flex gap-2">
+        <div className="flex shrink-0 items-center gap-3 md:gap-4"><Clock />
+        <div className="md:hidden"><GenButton compact className="compact-generate" /></div>
+        <div className="hidden gap-2 md:flex">
           <Button variant="plain" size="plain" onClick={() => fileInput.current?.click()} className="header-ghost inline-flex h-8 items-center gap-2 rounded-md border border-border px-3 text-[12px] text-muted-foreground hover:bg-muted"><Plus className="h-4 w-4" />Add files</Button>
           <GenButton />
         </div></div>
       </header>
 
-      <div className="flex min-h-0 flex-1">
-        <aside className="flex sources-sidebar w-[300px] shrink-0 flex-col border-r border-border bg-sidebar">
+      <div className="relative flex min-h-0 flex-1 pb-[var(--mobile-nav-height)] md:pb-0">
+        <aside aria-label="Sources panel" className={`sources-sidebar w-full min-h-0 shrink-0 flex-col border-r border-border bg-sidebar md:flex md:w-[248px] min-[1025px]:w-[300px] ${mobilePanel === "sources" ? "flex" : "hidden"}`}>
           <div className="nice-scroll flex-1 space-y-6 overflow-y-auto p-4">
             <section className="fade-up">
               <h3 className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Sources <Badge n={files.length} /></h3>
@@ -270,9 +280,9 @@ function Index() {
                   <div className="rounded-lg border border-border bg-card p-3">
                     <div className="mb-2 flex items-center gap-2 text-[10.5px] uppercase text-muted-foreground"><span className="h-[5px] w-[5px] rounded-full bg-danger" />Board substrate</div>
                     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-center">
-                      <Button variant="plain" size="plain" onClick={() => setSel(cites[2])} className="rounded-md bg-muted p-2 text-[12px] hover:shadow-sm"><div className="font-medium">Recycled Kraft</div><div className="text-[10px] text-muted-foreground">production_specs</div></Button>
+                      <Button variant="plain" size="plain" onClick={() => openEvidence(cites[2])} className="rounded-md bg-muted p-2 text-[12px] hover:shadow-sm"><div className="font-medium">Recycled Kraft</div><div className="text-[10px] text-muted-foreground">production_specs</div></Button>
                       <span className="text-[10px] font-medium text-muted-foreground">VS</span>
-                      <Button variant="plain" size="plain" onClick={() => setSel(cites[3])} className="rounded-md bg-muted p-2 text-[12px] hover:shadow-sm"><div className="font-medium">Bleached White</div><div className="text-[10px] text-muted-foreground">retailer_req</div></Button>
+                      <Button variant="plain" size="plain" onClick={() => openEvidence(cites[3])} className="rounded-md bg-muted p-2 text-[12px] hover:shadow-sm"><div className="font-medium">Bleached White</div><div className="text-[10px] text-muted-foreground">retailer_req</div></Button>
                     </div>
                   </div>
                 </section>
@@ -292,13 +302,14 @@ function Index() {
           </div>
         </aside>
 
-        <main className="relative min-w-0 flex-1 bg-card">
+        <main aria-label="Brief panel" className={`relative min-h-0 min-w-0 flex-1 bg-card md:block ${mobilePanel === "brief" ? "block" : "hidden"}`}>
+          <Button variant="plain" size="plain" aria-label="Open evidence" title="Open evidence" onClick={() => setEvidenceOpen(true)} className="absolute right-3 top-3 z-10 hidden h-8 w-8 items-center justify-center rounded-md border border-border bg-card text-muted-foreground hover:bg-muted md:flex min-[1025px]:hidden"><PanelRight className="h-4 w-4" /></Button>
           {confetti && <Confetti />}
           {!done ? (
-            <div className={`empty-workspace relative flex h-full flex-col items-center justify-center gap-8 px-8 text-center ${phase === "running" ? "is-running" : ""}`}>
+            <div className={`empty-workspace relative flex h-full flex-col items-center justify-center gap-8 overflow-y-auto px-6 py-8 text-center md:px-8 ${phase === "running" ? "is-running" : ""}`}>
               <div className="relative">
                 <div className="text-[10.5px] font-semibold uppercase text-primary">{phase === "running" ? "Drafting" : "New brief"}</div>
-                <h1 className="mt-3 empty-title font-display text-[38px] font-normal leading-[1.1]">A clearer brief starts with better evidence.</h1>
+                <h1 className="mt-3 empty-title font-display text-[28px] font-normal leading-[1.1] md:text-[36px]">A clearer brief starts with better evidence.</h1>
                 <p className="mx-auto mt-4 max-w-[480px] text-[14px] leading-[1.65] text-secondary-foreground">Add your specs, brand guidelines and retailer requirements. Every line of the brief will point back to its source.</p>
                 <div className="mt-8"><Pipeline stage={stage} running={phase === "running"} /></div>
                 {phase === "idle" && (
@@ -312,9 +323,9 @@ function Index() {
             </div>
           ) : (
             <div className="nice-scroll edge-fade h-full overflow-y-auto">
-              <div className="mx-auto max-w-3xl px-10 py-10">
+              <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 md:px-8 min-[1201px]:px-10">
                 <div className="fade-up text-[10.5px] font-semibold uppercase text-primary">Working Draft · v0.3</div>
-                <h1 className="fade-up mt-2 brief-title font-display text-[36px] font-normal leading-[1.15]">Draft Brief: ECO-01 Soap Packaging Redesign</h1>
+                <h1 className="fade-up mt-2 brief-title font-display text-[28px] font-normal leading-[1.15] md:text-[36px]">Draft Brief: ECO-01 Soap Packaging Redesign</h1>
                 <div className="mt-4 h-0.5 w-8 bg-primary" />
                 <div className="mt-4 flex gap-4 font-mono text-[10.5px] text-muted-foreground"><span><AnimatedCount value={5} /> sections</span><span><AnimatedCount value={21} /> facts</span></div>
                 {[
@@ -356,8 +367,9 @@ function Index() {
           )}
         </main>
 
-        <aside className={`nice-scroll evidence-sidebar w-[340px] shrink-0 overflow-y-auto border-l border-border bg-sidebar p-5 ${done ? "panel-in" : ""}`} key={done ? "d" : "e"}>
-          <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Evidence</h3>
+        {evidenceOpen && <div onClick={() => setEvidenceOpen(false)} className="absolute inset-0 z-20 hidden bg-foreground/20 md:block min-[1025px]:hidden" />}
+        <aside aria-label="Evidence panel" className={`nice-scroll evidence-sidebar w-full min-h-0 shrink-0 overflow-y-auto border-l border-border bg-sidebar p-5 md:absolute md:inset-y-0 md:right-0 md:z-30 md:w-[340px] min-[1025px]:static min-[1025px]:block min-[1025px]:w-[300px] min-[1201px]:w-[340px] ${mobilePanel === "evidence" ? "block" : "hidden"} ${evidenceOpen ? "md:block" : "md:hidden"}`}>
+          <div className="flex items-center justify-between"><h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Evidence</h3><Button variant="plain" size="plain" aria-label="Close evidence" onClick={() => setEvidenceOpen(false)} className="hidden h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted md:flex min-[1025px]:hidden"><X className="h-4 w-4" /></Button></div>
           {!sel ? (
             <div className="mt-16 flex flex-col items-center text-center">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted"><Search className="h-4 w-4 text-muted-foreground" /></div>
@@ -376,8 +388,15 @@ function Index() {
         </aside>
       </div>
 
+      <nav aria-label="Workspace panels" className="mobile-tab-bar fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 border-t border-border bg-card md:hidden">
+        {(["brief", "sources", "evidence"] as const).map((panel) => {
+          const Icon = panel === "brief" ? FileText : panel === "sources" ? FileSpreadsheet : Search;
+          return <Button key={panel} variant="plain" size="plain" aria-current={mobilePanel === panel ? "page" : undefined} onClick={() => setMobilePanel(panel)} className={`flex h-14 flex-col items-center justify-center gap-1 text-[11px] font-medium hover:bg-muted ${mobilePanel === panel ? "text-primary" : "text-muted-foreground"}`}><Icon className="h-4 w-4" /><span>{panel === "brief" ? "Brief" : panel === "sources" ? "Sources" : "Evidence"}</span></Button>;
+        })}
+      </nav>
+
       {toasts[0] && (
-        <div key={toasts[0].id} className="toast-in fixed bottom-6 left-1/2 z-50 -translate-x-1/2">
+        <div key={toasts[0].id} className="workspace-toast toast-in fixed bottom-6 left-1/2 z-50 -translate-x-1/2">
           <div className={`flex items-center gap-2 rounded-lg border px-4 py-2.5 text-[13px] shadow-lg ${toasts[0].kind === "ok" ? "border-border bg-card" : "border-danger/20 bg-danger-soft text-danger"}`}>
             {toasts[0].kind === "ok" ? <Check className="h-4 w-4 text-primary" /> : <AlertCircle className="h-4 w-4" />}
             {toasts[0].text}
